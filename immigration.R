@@ -6,45 +6,14 @@ cces18 <- cces18 %>%
   mutate(prison = car::recode(CC18_332e, "1=1; 2=0; else =NA")) %>% 
   mutate(imm = bsec + daca + lottery + sanc + prison) %>% 
   mutate(dis_trump = car::recode(CC18_308a, "3:4=1; 1:2=0; else =NA")) %>%
-  mutate(rep = car::recode(pid7, "5:7=1; else=0")) %>% 
+  mutate(pid2 = frcode(pid7 == 1 | pid7 == 2 | pid7 == 3 ~ "Democrat",
+                       pid7 == 5 | pid7 == 6 | pid7 == 7 ~ "Republican")) %>% 
   mutate(male = car::recode(gender, "1=1; else=0")) %>% 
   mutate(male = as.factor(male)) %>% 
   mutate(age = 2018 - birthyr) %>% 
   mutate(white = car::recode(race, "1=1; else =0")) %>% 
   mutate(white = as.factor(white)) %>% 
   mutate(att = car::recode(pew_churatd, "6=1; 5=2; 4=3; 3=4; 2=5; 1=6; else =NA"))
-
-
-## Bars ####
-
-bar_fun <- function(df, var, name){
-  
-  var <- enquo(var)
-
-  df %>% 
-    filter(rep == 1) %>%
-    filter(!! var == 1) %>% 
-    filter(dis_trump != "NA") %>% 
-    # group_by(white) %>% 
-    ct(dis_trump) %>% 
-    mutate(group = name) %>% 
-    ungroup(white) %>% 
-    # mutate(white = frcode(white == 1 ~ "White",
-    #                       white == 0 ~ "Non-White")) %>% 
-    mutate(dis_trump = frcode(dis_trump == 0 ~ "Approve",
-                              dis_trump == 1 ~ "Disapprove"))
-    
-    
-  
-}
-
-ttt1 <- cces18 %>% bar_fun(bsec, "Increase Border Security Funding") 
-ttt2 <- cces18 %>% bar_fun(daca, "Don't Pass DACA") 
-ttt3 <- cces18 %>% bar_fun(lottery, "End Visa Lottery") 
-ttt4 <- cces18 %>% bar_fun(sanc, "Withhold Fed. Funds to Sanctuary PDs") 
-ttt5 <- cces18 %>% bar_fun(prison, "Imprison Frequent Border Crossers") 
-
-graph <- bind_df("ttt")
 
 
 ### Another Way ####
@@ -92,25 +61,21 @@ graph %>%
 
   
 
-
 ## Interaction ####
 
-reg <- cces18 %>% 
-  filter(rep ==1)
+reg1 <- glm(dis_trump ~ imm*white*pid2 + educ + age + male + att, data = cces18, family = "binomial")
 
-reg1 <- glm(dis_trump ~ imm*white + educ + age + male + att, data = reg, family = "binomial")
-
-gg2 <- interact_plot(reg1, pred= imm, modx = white, int.width = .76, interval = TRUE, modx.labels = c("Non-White", "White"))
+gg2 <- interact_plot(reg1, pred= imm, modx = white, mod2 = pid2, int.width = .76, interval = TRUE, modx.labels = c("Non-White", "White"), mod2.labels = c("Democrat", "Republican"))
 
 
 gg2 + 
-  labs(x = "<- Opposed to Immigration Restrictions: In Favor of Restrictions -->", y = "Percent Disapproving of Trump", title = "Interaction of Immigration Views and Gender on Trump Approval", caption = "Data: CCES 2018", subtitle = "Among Republicans") +
+  labs(x = "Higher Values = More Immigration Restriction", y = "Percent Disapproving of Trump", title = "Interaction of Immigration Views and Race on Trump Approval", caption = "Data: CCES 2018", subtitle = "") +
   theme_gg("Lato") +
   # scale_x_continuous(limits = c(1,6.1), breaks = c(1,2,3,4,5,6), labels = c("Never", "", "Yearly", "", "Weekly", "")) +
   scale_color_simpsons() +
   scale_fill_simpsons() +
   scale_y_continuous(labels = percent) +
-  theme(legend.position = c(.55,.85)) +
+  theme(legend.position = c(.75,.85)) +
   theme(plot.title = element_text(size = 14)) +
-  ggsave("D://nevertrump/imm_race_interact.png", width = 7)
+  ggsave("D://nevertrump/imm_race_interact_pid2.png", width = 7)
   
